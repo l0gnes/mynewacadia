@@ -22,13 +22,17 @@ const accordianItems = [
 ];
 
 // Actual data stores for the filter
-const selected = ref([]);
-const subjects = ref([]);
-const courses = ref([]);
+const filterDepartment = ref([]);   // department list
+const searchBarContent = ref('');   // search bar reactive var
 
-const expandedViewCourseData = ref({});
-const expandCourseView = ref(false);
+const subjects = ref([]);           // all the different subjects we have in the database
+const courses = ref([]);            // all of the different courses we are serving
 
+// Data for the CourseView
+const expandedViewCourseData = ref({});     // JSON data served from the API
+const expandCourseView = ref(false);        // Reactive variable to actually show the CourseView modal
+
+// Use this for D.O.W. reference
 const dayMapping = {
     0 : "Mon",
     1 : "Tue",
@@ -39,6 +43,8 @@ const dayMapping = {
     6 : "Sun"
 }
 
+// Takes an integer array and converts it into the shortened D.O.W.
+// via the mapping above.
 const calculateDaysOfWeek = (days) => {
     let formattedDays = [];
 
@@ -54,6 +60,9 @@ const calculateDaysOfWeek = (days) => {
     return formattedDays
 }
 
+// A computed variable which served better formatted data for the
+// section table within the CourseView.
+// TODO: Fix it. It really doesn't have to be that complicated.
 const sectionTableData = computed(
     () => {
         let allSectionData = expandedViewCourseData.sections;
@@ -83,7 +92,7 @@ const sectionTableData = computed(
 )
 
 // Active filtering code
-watch(selected, async (n, o) => {
+watch([filterDepartment, searchBarContent], async ([n_sel, n_ser], [o_sel, o_ser]) => {
     await fetchCourseListUsingFilters();
 });
 
@@ -97,20 +106,25 @@ const logout = async () => {
     }
 }
 
+// Calling this resupplies the displayed courses in respect to our filters
 const fetchCourseListUsingFilters = async () => {
 
-    await $fetch("/api/courses",
-    {
-        query: {
-            "dept" : selected.value
-        }
-    }).then(
-        (r) => { courses.value = r }
+    let query = {}
+
+    if(searchBarContent.value.length > 0)
+        { query["search"] = searchBarContent.value; }
+
+    if(filterDepartment.value.length > 0)
+        { query["dept"] = filterDepartment.value; }
+
+    await $fetch("/api/courses", { query: query }).then(
+        (r) => { courses.value = r; }
     );
 
 }
 
-// Fetching data from backend on page mount
+// Fetching data from backend on page mount, this should really only be used for the filter list.
+// This also does the initial query to propogate the course catalogue list.
 onMounted(async () => {
 
     await $fetch("/api/subjects").then(
@@ -121,6 +135,7 @@ onMounted(async () => {
 
 })
 
+// Calling this opens the CourseView modal, and displays `course_id` Course's information.
 const showCourseInformation = async (course_id) => {
     
     // Query the data first.
@@ -169,7 +184,7 @@ const showCourseInformation = async (course_id) => {
                 <UAccordion :items="accordianItems">
                     
                     <template #departments>
-                        <UCheckbox :key="s.code" :value="s.code" :name="s.name" v-bind="s" v-model="selected" :ref="s.code" v-for="s in subjects">
+                        <UCheckbox :key="s.code" :value="s.code" :name="s.name" v-bind="s" v-model="filterDepartment" :ref="s.code" v-for="s in subjects">
                             <template #label>
                                 <span>{{ s.name }}</span> <UBadge size="sm" variant="outline">{{ s.count }}</UBadge>
                             </template>
@@ -189,8 +204,8 @@ const showCourseInformation = async (course_id) => {
         </div>
 
         <div class="w-3/4 px-4 py-4">
+            <UInput icon="i-heroicons-magnifying-glass-20-solid" placeholder="Search Course Catalogue..." class="mb-3" color="gray" variant="outline" v-model="searchBarContent"></UInput>
             <div v-if="courses.length > 0">
-                <UInput icon="i-heroicons-magnifying-glass-20-solid" placeholder="Search Course Catalogue..." class="mb-3" color="gray" variant="outline"></UInput>
                 <UCard v-bind:key="d.code" v-for="d in courses" class="mb-3">
                     <div class="flex flex-row">
                         <div class="flex-grow">
