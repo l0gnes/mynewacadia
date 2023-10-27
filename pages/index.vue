@@ -21,6 +21,29 @@ const accordianItems = [
     }
 ];
 
+// The Mapping for the CourseView table
+const courseViewCols = [
+    {
+        key: "section",
+        label : "Section",
+    },
+    {
+        key: "prof_name",
+        label: "Professor"
+    },
+    {
+        key: "times",
+        label: "Times"
+    },
+    {
+        key: "vacancy",
+        label: "Occupants"
+    },
+    {
+        key: "enroll" // This is handle via custom slots
+    }
+]
+
 // Actual data stores for the filter
 const filterDepartment = ref([]);   // department list
 const searchBarContent = ref('');   // search bar reactive var
@@ -60,36 +83,43 @@ const calculateDaysOfWeek = (days) => {
     return formattedDays
 }
 
-// A computed variable which served better formatted data for the
-// section table within the CourseView.
-// TODO: Fix it. It really doesn't have to be that complicated.
-const sectionTableData = computed(
-    () => {
-        let allSectionData = expandedViewCourseData.sections;
-        let allFormattedData = [];
-
-        for(let i = 0; i < allSectionData.length; i++)
-        {
-            let currentItem = allSectionData[i];
-
-            allFormattedData.push(
-                {
-                    "title" : ((currentItem.term == 0) ? "FA" : "WI") + currentItem.number,
-                    "prof" : currentItem.prof_id,
-                    "professor" : currentItem.professors.name,
-                    "seat_count" : currentItem.seat_count,
-                    "waitlisted" : currentItem.student_count > currentItem.seat_count ? currentItem.student_count - currentItem.seat_count : false,
-                    "open_seats" : currentItem.seat_count - currentItem.student_count,
-                    "start_time" : currentItem.start_time,
-                    "end_time" : currentItem.end_time,
-                    "days" : calculateDaysOfWeek(currentItem.days)
-                }
-            );
-
-            return allFormattedData;
-        }
+// Utility function for generating a string to indicate section vacancy
+const generateVacancyString = (seat_count, student_count) => {
+    if(student_count > seat_count)
+    {
+        return `${seat_count} Seats, ${student_count - seat_count} Waitlisted`;
     }
-)
+    else
+    {
+        return `${seat_count} Seats, ${seat_count - student_count} Available`;
+    }
+}
+
+const generateTimeString = (dow, start_time, end_time) => {
+    const daysOfWeek = calculateDaysOfWeek(dow);                    // Calculates the humanized abbr. of Days of Week
+    return `${daysOfWeek.join('/')}\n${start_time} - ${end_time}`   // Returns a string used for the table
+}
+
+// This method generates the section table for the CourseView
+const getSectionDataForTable = () => {
+    let formattedData = [];
+
+    expandedViewCourseData.value.sections.forEach(
+        (s) => {
+            formattedData.push(
+                {
+                    "section": ((s.term == 0) ? "FA" : "WI") + s.number.toString().padStart(2, '0'),
+                    "prof_name": s.professors.name,
+                    "vacancy": generateVacancyString(s.seat_count, s.student_count),
+                    "times": generateTimeString(s.days, s.start_time, s.end_time),
+                    "is_waitlisted" : (s.seat_count < s.student_count)  // Used in detemining Button text in the CourseView (E.g., Enroll/Waitlist)
+                }
+            )
+        }
+    );
+
+    return formattedData;
+}
 
 // Active filtering code
 watch([filterDepartment, searchBarContent], async ([n_sel, n_ser], [o_sel, o_ser]) => {
@@ -238,8 +268,8 @@ const showCourseInformation = async (course_id) => {
 
     </div>
 
-    <UModal v-model="expandCourseView">
-        <UCard>
+    <UModal v-model="expandCourseView" :ui="{ width: 'sm:max-w-3xl' }">
+        <UCard class="max-w-full">
             <template #header>
                 <h3 class="text-sm text-gray-500">{{ expandedViewCourseData.department }}-{{ expandedViewCourseData.code }} • {{ expandedViewCourseData.credits }} Credits</h3>
                 <h1 class="text-2xl">{{ expandedViewCourseData.title }}</h1>
@@ -260,7 +290,23 @@ const showCourseInformation = async (course_id) => {
 
             <hr class="my-4 border-gray-700" />
 
-            <UTable>
+            <UTable :columns="courseViewCols" :rows="getSectionDataForTable()">
+
+                <template #enroll-data="{ row }">
+
+                    <UTooltip text="You must be logged in to enroll" :prevent="is_authenticated">
+                        <UButton
+                            :color="!is_authenticated ? 'gray' : 'primary'"
+                            :disabled="!is_authenticated"
+                            :variant="row.is_waitlisted ? 'outline' : 'solid'"  
+                            class="w-full justify-center" 
+                            @click="console.log('hi');"
+                        >
+                            {{ row.is_waitlisted ? "Waitlist" : "Enroll" }}
+                        </UButton>
+                    </UTooltip>
+                
+                </template>
 
             </UTable>
 
