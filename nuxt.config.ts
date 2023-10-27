@@ -11,5 +11,9 @@ export default defineNuxtConfig({
     redirect: false
   },
 
-  ssr: false
+  ssr: false,
+
+  nitro : {
+    experimental : { openAPI : true }
+  }
 })
