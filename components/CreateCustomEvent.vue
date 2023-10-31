@@ -1,4 +1,5 @@
 <script setup>
+import moment from 'moment';
 
 // These need to stay in this specific order.
 const dow = [
@@ -33,6 +34,7 @@ const reset_table = () => {
 // Runs the query to push the formdata through to the backend
 // TODO: This doesn't actually do anything still, but it still makes a call to the backend which is important.
 const pushNewCustomEvent = async () => {
+
     const {body} = await useFetch(
         "/api/calendar/events/custom",
         {
@@ -48,6 +50,14 @@ const pushNewCustomEvent = async () => {
     ).then(
         (v) => {console.log(v)}
     );
+}
+
+// Validates the the end_time comes after start_time
+const validateTimes = (node) => {
+    let st_mom = moment(start_time.value, "hh:mm");
+    let et_mom = moment(end_time.value, "hh:mm");
+
+    return et_mom.isAfter(st_mom);
 }
 
 </script>
@@ -68,6 +78,11 @@ const pushNewCustomEvent = async () => {
         :classes="{
             messages: 'my-2',
             message: 'text-red-400'
+        }"
+        :validation-rules="{ validateTimes }"
+        validation="validateTimes"
+        :validation-messages="{
+            validateTimes: 'Event must start before it ends, please double-check your event times'
         }"
     >
 
