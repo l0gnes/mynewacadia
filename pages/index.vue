@@ -197,7 +197,6 @@ const showCourseInformation = async (course_id) => {
             <UButton icon="i-heroicons-calendar-days" color="gray" @click="navigateTo('/dashboard')">View My Schedule</UButton>
 
             <UButton icon="i-heroicons-arrow-left-on-rectangle" variant="outline" @click="logout" class="float-right">Logout</UButton>
-            <UButton icon="i-heroicons-cog-6-tooth" variant="outline" color="gray" @click="logout" class="float-right mr-2">Account Settings</UButton>
         </div>
 
     </UCard>
@@ -294,7 +293,7 @@ const showCourseInformation = async (course_id) => {
 
                 <template #enroll-data="{ row }">
 
-                    <UTooltip text="You must be logged in to enroll" :prevent="is_authenticated">
+                    <UTooltip text="You must be logged in to do this" :prevent="is_authenticated">
                         <UButton
                             :color="!is_authenticated ? 'gray' : 'primary'"
                             :disabled="!is_authenticated"
