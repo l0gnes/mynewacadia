@@ -55,7 +55,9 @@ const pushNewCustomEvent = async () => {
 // Validates the the end_time comes after start_time
 const validateTimes = (node) => {
     let st_mom = moment(start_time.value, "hh:mm");
-    let et_mom = moment(end_time.value, "hh:mm");
+    let et_mom = moment(node.value, "hh:mm");
+
+    console.log(et_mom.isAfter(st_mom))
 
     return et_mom.isAfter(st_mom);
 }
@@ -78,11 +80,6 @@ const validateTimes = (node) => {
         :classes="{
             messages: 'my-2',
             message: 'text-red-400'
-        }"
-        :validation-rules="{ validateTimes }"
-        validation="validateTimes"
-        :validation-messages="{
-            validateTimes: 'Event must start before it ends, please double-check your event times'
         }"
     >
 
@@ -124,7 +121,12 @@ const validateTimes = (node) => {
             <FormKit
             type="time"
             label="End Time"
-            validation="required"
+            :validation-rules="{ validateTimes }"
+            validation="required|validateTimes"
+            validation-visbility="live"
+            :validation-messages="{
+                validateTimes: 'Event must start before it ends, please double-check your event times'
+            }"
             v-model="end_time"
             :classes="{
                     input: 'rounded-md py-1 px-3 w-full',
