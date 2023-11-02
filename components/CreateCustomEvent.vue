@@ -43,12 +43,12 @@ const pushNewCustomEvent = async () => {
                 name : event_title.value,
                 start_time : start_time.value,
                 end_time : end_time.value,
-                days : selected_boxes.value
+                days : selected_boxes.value.map((d) => dow.indexOf(d))
             },
             lazy: true,
         }
     ).then(
-        (v) => {console.log(v)}
+        (v) => {console.log(v.data)}
     );
 }
 
@@ -56,8 +56,6 @@ const pushNewCustomEvent = async () => {
 const validateTimes = (node) => {
     let st_mom = moment(start_time.value, "hh:mm");
     let et_mom = moment(node.value, "hh:mm");
-
-    console.log(et_mom.isAfter(st_mom))
 
     return et_mom.isAfter(st_mom);
 }

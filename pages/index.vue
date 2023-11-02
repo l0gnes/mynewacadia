@@ -55,6 +55,9 @@ const courses = ref([]);            // all of the different courses we are servi
 const expandedViewCourseData = ref({});     // JSON data served from the API
 const expandCourseView = ref(false);        // Reactive variable to actually show the CourseView modal
 
+// A list of all of the courses that the user is enrolled in
+const enrolledCourses = ref([]);
+
 // Use this for D.O.W. reference
 const dayMapping = {
     0 : "Mon",
@@ -108,6 +111,7 @@ const getSectionDataForTable = () => {
         (s) => {
             formattedData.push(
                 {
+                    "section_id" : s.section_id,
                     "section": ((s.term == 0) ? "FA" : "WI") + s.number.toString().padStart(2, '0'),
                     "prof_name": s.professors.name,
                     "vacancy": generateVacancyString(s.seat_count, s.student_count),
@@ -161,6 +165,7 @@ onMounted(async () => {
         (r) => {subjects.value = r}
     );
     
+    await fetchEnrolledCourses();
     await fetchCourseListUsingFilters();
 
 })
@@ -175,6 +180,59 @@ const showCourseInformation = async (course_id) => {
             expandCourseView.value = true; // Show the CourseView afterwards.
         }
     );
+}
+
+// Calling this with a section_id enrolls a user in a course
+// It also closes the course view if it is open
+// TODO: Make some sort of indicator that the user actually did enroll in the course (e.g., a toast or a message etc.)
+const enrollInCourse = async (section_id) => {
+
+    await useFetch(
+        "/api/calendar/events/courses",
+        {
+            method: "PUT",
+            body: {
+                "section_id": section_id
+            },
+            lazy: false
+        }
+    ).then(
+        async (o) => {
+            expandCourseView.value = false;         // Close the course view if it's open
+            await fetchEnrolledCourses()            // Refetch enrolled courses
+        }
+    );
+}
+
+// This function fetches all of the sections that a user is enrolled into and 
+// loads it into a variable that is used to detect whether or not a user
+// is enrolling or dropping a class
+const fetchEnrolledCourses = async () => {
+    
+    // If user isn't authenticated, then don't return any enrolled courses
+    if(!is_authenticated)
+    {
+        return;
+    }
+
+    const {data} = await useFetch("/api/user/section_list", { lazy: false });
+
+    enrolledCourses.value = data;
+}
+
+const dropSection = async (section_id) => {
+    if(!is_authenticated)
+    {
+        return;
+    }
+
+    await useFetch(`/api/calendar/events/courses/${section_id}`, {method: 'DELETE', lazy: false})
+        .then(
+            async (resp) => {
+                expandCourseView.value = false;                
+                await fetchEnrolledCourses();
+            }
+        )
 }
 
 </script>
@@ -293,17 +351,28 @@ const showCourseInformation = async (course_id) => {
 
                 <template #enroll-data="{ row }">
 
-                    <UTooltip text="You must be logged in to do this" :prevent="is_authenticated">
-                        <UButton
-                            :color="!is_authenticated ? 'gray' : 'primary'"
-                            :disabled="!is_authenticated"
-                            :variant="row.is_waitlisted ? 'outline' : 'solid'"  
-                            class="w-full justify-center" 
-                            @click="console.log('hi');"
+                    <div v-if="!enrolledCourses.value.includes(row.section_id)">
+                        <UTooltip text="You must be logged in to do this" :prevent="is_authenticated">
+                            <UButton
+                                :color="!is_authenticated ? 'gray' : 'primary'"
+                                :disabled="!is_authenticated"
+                                :variant="row.is_waitlisted ? 'outline' : 'solid'"  
+                                class="w-full justify-center" 
+                                @click="enrollInCourse(row.section_id)"
+                            >
+                                {{ row.is_waitlisted ? "Waitlist" : "Enroll" }}
+                            </UButton>
+                        </UTooltip>
+                    </div>
+                    <div v-else>
+                        <UButton 
+                            color="gray"
+                            @click="dropSection(row.section_id)"
                         >
-                            {{ row.is_waitlisted ? "Waitlist" : "Enroll" }}
+                            {{ row.is_waitlisted ? "Unwaitlist" : "Drop" }}
                         </UButton>
-                    </UTooltip>
+                    </div>
+
                 
                 </template>
 
