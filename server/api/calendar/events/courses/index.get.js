@@ -21,7 +21,7 @@ export default defineEventHandler(
 
         // I know this isn't the cleanest way of doing it but I cba to figure out a better way rn
         const {data: edat, error: eerr} = await supa.from('events')
-            .select("event_id, event_type, section_id, days, start_time, end_time, course: sections ( courses ( * ) )")
+            .select("event_id, event_type, section_id, days, start_time, end_time, section: sections ( professors ( * ), course : courses ( * ) )")
             .eq('event_type', 0)
             .eq('for_user', udat.user.id);
 
