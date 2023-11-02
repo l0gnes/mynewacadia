@@ -7,7 +7,8 @@ export default defineEventHandler(
 
         const {data, error} = await supa.from("sections")
             .select("*, course : courses ( * )")
-            .eq("section_id", section_id);
+            .eq("section_id", section_id)
+            .maybeSingle();
 
         return data;
     }

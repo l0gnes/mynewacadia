@@ -10,7 +10,12 @@ const user = useSupabaseUser();
 
 const userCourseData = ref([]);
 const filteredUserCourseData = computed(() => userCourseData.value.filter(v => v.section.term == selectedTerm.value))
+
 const createCustomEventIsOpened = ref(false);
+
+const dropCourseModalIsOpened = ref(false);
+const dropCourseSection = ref(null);
+
 const selectedTerm = ref(0);
 
 const termTabs = [
@@ -71,6 +76,16 @@ const loadCourseData = async () => {
 
 }
 
+const openDropCourseDialogue = (section_id) => {
+    dropCourseModalIsOpened.value = true;
+    dropCourseSection.value = section_id;
+}
+
+const droppedCourseCallback = async () => {
+    dropCourseModalIsOpened.value = false;
+    await loadCourseData();
+}
+
 onMounted(async () => {
     await loadCourseData();
 })
@@ -119,7 +134,11 @@ onMounted(async () => {
                                     <li><UIcon name="i-mingcute-copper-coin-line" /> Credits: {{ c.section.course.credits }}</li>
                                 </ul>
 
-                                <UButton variant="outline" class="w-full justify-center mt-2">
+                                <UButton 
+                                    variant="outline" 
+                                    class="w-full justify-center mt-2"
+                                    @click="openDropCourseDialogue(c.section_id)"
+                                >
                                     Drop Section
                                 </UButton>
                             </template>
@@ -170,6 +189,13 @@ onMounted(async () => {
 
         <UModal v-model="createCustomEventIsOpened">
             <CreateCustomEvent />
+        </UModal>
+
+        <UModal v-model="dropCourseModalIsOpened">
+            <ConfirmDropCourse 
+                :section_id="dropCourseSection" 
+                @cancelled="dropCourseModalIsOpened=false" 
+                @dropped="droppedCourseCallback"/>
         </UModal>
 
     </div>
