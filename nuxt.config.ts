@@ -16,5 +16,9 @@ export default defineNuxtConfig({
 
   nitro : {
     experimental : { openAPI : true }
+  },
+
+  ui: {
+    icons: ['heroicons', 'mingcute']
   }
 })
