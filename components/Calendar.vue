@@ -1,6 +1,9 @@
 <script setup>
 import VueCal from 'vue-cal';
 import 'vue-cal/dist/vuecal.css';
+
+const props = defineProps({'events' : 'object'});
+
 </script>
 
 <template>
@@ -15,7 +18,7 @@ import 'vue-cal/dist/vuecal.css';
             :timeFrom="8 * 60"
             :timeTo="23 * 60"
             small
-            startWeekOnSunday
+            :events="props.events"
         />
     </div>
 

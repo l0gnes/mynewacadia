@@ -517,7 +517,7 @@ const dropSection = async (section_id) => {
               :disabled="!is_authenticated"
               :variant="row.is_waitlisted ? 'outline' : 'solid'"
               class="w-full justify-center"
-              @click="console.log('hi')"
+              @click="enrollInCourse(row.section_id)"
             >
               {{ row.is_waitlisted ? "Waitlist" : "Enroll" }}
             </UButton>

@@ -16,7 +16,7 @@ export default defineEventHandler(
         }
 
         const {data : dbdat, error : dberr} = await supa.from('events')
-            .select()
+            .select("*, section: sections ( *, course : courses ( * ) )")
             .eq('for_user', udat.user.id);
 
         return dbdat;

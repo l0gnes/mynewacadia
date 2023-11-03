@@ -1,4 +1,8 @@
 <script setup>
+import moment from "moment";
+import VueCal from 'vue-cal';
+import 'vue-cal/dist/vuecal.css';
+
 
 definePageMeta(
     {
@@ -10,8 +14,15 @@ const user = useSupabaseUser();
 
 const userCourseData = ref([]);
 const filteredUserCourseData = computed(() => userCourseData.value.filter(v => v.section.term == selectedTerm.value))
+
 const createCustomEventIsOpened = ref(false);
+
+const dropCourseModalIsOpened = ref(false);
+const dropCourseSection = ref(null);
+
 const selectedTerm = ref(0);
+
+const events = ref([]);
 
 const termTabs = [
     {
@@ -71,8 +82,57 @@ const loadCourseData = async () => {
 
 }
 
+const openDropCourseDialogue = (section_id) => {
+    dropCourseModalIsOpened.value = true;
+    dropCourseSection.value = section_id;
+}
+
+const droppedCourseCallback = async () => {
+    dropCourseModalIsOpened.value = false;
+    await loadCourseData();
+    await getCalendarData();
+}
+
 onMounted(async () => {
     await loadCourseData();
+    await getCalendarData();
+})
+
+const generateEventTimeString = (dow, t) => {
+    const p = moment(t, "hh:mm:ss").day(dow).format("YYYY-MM-DD HH:mm")
+    return p;
+}
+
+const getCalendarData = async () => {
+
+    const {data} = await useFetch('/api/calendar/events');
+
+    let tmpEventData = [];
+
+
+    const term_based = data.value.filter((e) => (e.event_type == 1 || e.section.term == selectedTerm.value)); 
+
+    term_based.forEach(
+        (event) => {
+            event.days.forEach(
+                (d) => {
+                    tmpEventData.push(
+                        {
+                            "title" : event.event_type ? event.custom_metadata.name : event.section.course.title,
+                            "start" : generateEventTimeString(d, event.start_time),
+                            "end" : generateEventTimeString(d, event.end_time)
+                        }
+                    );
+                }
+            )
+        }
+    )
+
+    events.value = tmpEventData;
+}
+
+watch(selectedTerm, () => {
+    getCalendarData();
 })
 
 </script>
@@ -95,38 +155,53 @@ onMounted(async () => {
             <div class="w-1/4 m-2">
                 <UCard class="h-full">
                     <template #header>
-                        <h1>My Courses</h1>
+                        <h1 class="text-xl">My Courses</h1>
                     </template>
 
-                    <UCard v-bind:key="c.event_id" v-for="c in filteredUserCourseData" :ui="{body : {padding : 'px-2 py-3 sm:p-4'}}" class="mb-3">
-                        <h1 class="text-lg font-semibold">{{ c.section.course.title }} <span class="text-xs text-gray-400 ml-1">{{ ((c.section.term == 0) ? "FA" : "WI") + c.section.number.toString().padStart(2, '0') }}</span></h1>
+                    <div v-if="filteredUserCourseData.length > 0">
 
-                        <ul class="my-1">
-                            <li class="text-sm text-gray-400"><UIcon name="i-mingcute-alarm-2-line" /> {{ generateTimeString(c.days, c.start_time, c.end_time) }}</li>
-                            <li class="text-sm text-gray-400"><UIcon name="i-mingcute-building-1-line" /> Beveridge Arts Room 000</li>
-                        </ul>
+                        <UCard v-bind:key="c.event_id" v-for="c in filteredUserCourseData" :ui="{body : {padding : 'px-2 py-3 sm:p-4'}}" class="mb-3">
+                            <h1 class="text-lg font-semibold">{{ c.section.course.title }} <span class="text-xs text-gray-400 ml-1">{{ ((c.section.term == 0) ? "FA" : "WI") + c.section.number.toString().padStart(2, '0') }}</span></h1>
+    
+                            <ul class="my-1">
+                                <li class="text-sm text-gray-400"><UIcon name="i-mingcute-alarm-2-line" /> {{ generateTimeString(c.days, c.start_time, c.end_time) }}</li>
+                                <li class="text-sm text-gray-400"><UIcon name="i-mingcute-building-1-line" /> Beveridge Arts Room 000</li>
+                            </ul>
+    
+                            <UAccordion 
+                                :items="[{'slot' : 'more-info', label: 'View More Info'}]"
+                                color="primary"
+                                variant="ghost"
+                                size="sm"
+                            >
+    
+                                <template #more-info>
+                                    <ul>
+                                        <li><UIcon name="i-mingcute-mortarboard-line" /> Instructor: {{ c.section.professor.name }}</li>
+                                        <li><UIcon name="i-mingcute-copper-coin-line" /> Credits: {{ c.section.course.credits }}</li>
+                                    </ul>
+    
+                                    <UButton 
+                                        variant="outline" 
+                                        class="w-full justify-center mt-2"
+                                        @click="openDropCourseDialogue(c.section_id)"
+                                    >
+                                        Drop Section
+                                    </UButton>
+                                </template>
+    
+                            </UAccordion>
+    
+                        </UCard>
 
-                        <UAccordion 
-                            :items="[{'slot' : 'more-info', label: 'View More Info'}]"
-                            color="primary"
-                            variant="ghost"
-                            size="sm"
-                        >
+                    </div>
 
-                            <template #more-info>
-                                <ul>
-                                    <li><UIcon name="i-mingcute-mortarboard-line" /> Instructor: {{ c.section.professor.name }}</li>
-                                    <li><UIcon name="i-mingcute-copper-coin-line" /> Credits: {{ c.section.course.credits }}</li>
-                                </ul>
-
-                                <UButton variant="outline" class="w-full justify-center mt-2">
-                                    Drop Section
-                                </UButton>
-                            </template>
-
-                        </UAccordion>
-
-                    </UCard>
+                    <div v-else class="justify-center text-center">
+                        <p>You're not enrolled in any courses this term!</p>
+                        <UButton color="gray" class="mt-2" @click="navigateTo('/')">
+                            View Course Catalogue
+                        </UButton>
+                    </div>
 
                 </UCard>
             </div>
@@ -136,7 +211,7 @@ onMounted(async () => {
                     
                     <template #header>
                         <div class="flex">
-                            <h1 class="flex">My Schedule</h1>
+                            <h1 class="flex text-xl">My Schedule</h1>
     
                             <!-- This pushes all of the stuff to the right side of the header -->
                             <div class="flex-grow"></div>
@@ -161,7 +236,19 @@ onMounted(async () => {
 
                     </template>
 
-                    <Calendar />
+                    <VueCal
+                        hide-view-selector
+                        hide-title-bar
+                        active-view="week"
+                        :timeStep="30"
+                        :disable-views="['years', 'year', 'day', 'month']"
+                        :timeFrom="8 * 60"
+                        :timeTo="23 * 60"
+                        small
+                        :events="events"
+                        @ready="getCalendarData"
+                        @view-change="getCalendarData"
+                    />
 
                 </UCard>
             </div>
@@ -170,6 +257,13 @@ onMounted(async () => {
 
         <UModal v-model="createCustomEventIsOpened">
             <CreateCustomEvent />
+        </UModal>
+
+        <UModal v-model="dropCourseModalIsOpened">
+            <ConfirmDropCourse 
+                :section_id="dropCourseSection" 
+                @cancelled="dropCourseModalIsOpened=false" 
+                @dropped="droppedCourseCallback"/>
         </UModal>
 
     </div>
