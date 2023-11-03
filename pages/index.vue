@@ -157,7 +157,7 @@ const logout = async () => {
 
 // Calling this resupplies the displayed courses in respect to our filters
 const fetchCourseListUsingFilters = async () => {
-  let query = {filters};
+  let query = { filters };
   // if (!(terms.fall && terms.winter)) {
   //   if (terms.fall) query["term"] = 0;
   //   if (terms.winter) query["term"] = 1;
@@ -193,6 +193,11 @@ onMounted(async () => {
   await fetchProfessors();
 });
 
+const getCourseCode = (course_id) => {
+  const course = courses.value.find((item) => item.course_id == course_id);
+  if (!course) return null;
+  return course.department + "-" + course.code;
+};
 // Calling this opens the CourseView modal, and displays `course_id` Course's information.
 const showCourseInformation = async (course_id) => {
   // Query the data first.
@@ -427,16 +432,35 @@ const dropSection = async (section_id) => {
               <div class="box-content">
                 <p class="m-2 text-gray-400">{{ d.description }}</p>
               </div>
-              <div v-if="d.requisties">
-                <span class="font-bold">Requisites:</span>
-                <a
-                  v-bind:key="r"
-                  v-for="r in d.requisites"
-                  href="#"
-                  class="text-primary underline ml-2"
-                >
-                  {{ r }}
-                </a>
+              <div>
+                <p v-if="d.corequisities && d.corequisities.length">
+                  <small>Core Requisites:</small>
+                  <UBadge
+                    size="xs"
+                    v-for="req in d.corequisities"
+                    :key="`core-req-${req}`"
+                    :ui="{ rounded: 'rounded-full', color: 'green' }"
+                    variant="solid"
+                    class="cursor-pointer mx-2"
+                    @click="showCourseInformation(req)"
+                  >
+                    {{ getCourseCode(req) }}</UBadge
+                  >
+                </p>
+                <p v-if="d.requisities && d.requisities.length" class="my-2">
+                  <small>Pre-Requisites:</small>
+                  <UBadge
+                    size="xs"
+                    v-for="req in d.requisities"
+                    :key="`core-req-${req}`"
+                    :ui="{ rounded: 'rounded-full' }"
+                    variant="outline"
+                    class="cursor-pointer mx-2"
+                    @click="showCourseInformation(req)"
+                  >
+                    {{ getCourseCode(req) }}</UBadge
+                  >
+                </p>
               </div>
             </div>
           </div>
