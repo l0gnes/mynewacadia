@@ -1,5 +1,16 @@
 import { serverSupabaseClient } from "#supabase/server";
 
+const filtersAreEmpty = (filters) => {
+  return (
+    filters?.departments.length == 0 &&
+    filters?.terms.length == 0 &&
+    filters?.dows.length == 0 &&
+    filters?.startTime == null &&
+    filters?.endTime == null &&
+    filters?.professors.length == 0
+  )
+}
+
 export default defineEventHandler(async (event) => {
   const supa = await serverSupabaseClient(event);
   const params = getQuery(event);
@@ -18,7 +29,7 @@ export default defineEventHandler(async (event) => {
     }
 
     if (filters?.dows?.length > 0) {
-      query = query.containedBy("sections.days", filters.dows);
+      query = query.contains("sections.days", filters.dows);
     }
 
     // Search filtering
@@ -37,6 +48,6 @@ export default defineEventHandler(async (event) => {
     }
 
     const { data, error } = await query;
-    return data;
+    return data.filter((v) => ((filtersAreEmpty(filters) && !params.search) || params.search || v.sections.length > 0));
   }
 });

@@ -268,7 +268,7 @@ const resetFilters = async () => {
 </script>
 
 <template>
-  <UCard class="m-2 my-4 bg-black">
+  <UCard class="m-2 my-4 bg-gray-800">
     <template #header>
       <div class="py-4">
         <h1 class="text-4xl font-semibold">My New Acadia</h1>

@@ -99,7 +99,7 @@ onMounted(async () => {
 })
 
 const generateEventTimeString = (dow, t) => {
-    const p = moment(t, "hh:mm:ss").day(dow).format("YYYY-MM-DD HH:mm")
+    const p = moment(t, "hh:mm:ss").day(dow+1).format("YYYY-MM-DD HH:mm")
     return p;
 }
 
