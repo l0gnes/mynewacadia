@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     if (filters.endTime) {
       query = query.lte("sections.end_time", `${filters.endTime}:00`);
     }
-    if (filters.professors) {
+    if (filters.professors.length) {
       query = query.in("sections.prof_id", filters.professors);
     }
 
