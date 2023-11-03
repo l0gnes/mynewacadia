@@ -66,6 +66,7 @@ const searchBarContent = ref(""); // search bar reactive var
 
 const subjects = ref([]); // all the different subjects we have in the database
 const courses = ref([]); // all of the different courses we are serving
+const coursesCodes = ref([]);
 const professors = ref([]);
 const filters = reactive({
   departments: [],
@@ -188,13 +189,17 @@ onMounted(async () => {
     subjects.value = r;
   });
 
+  await getCoursesCodes();
   await fetchEnrolledCourses();
   await fetchCourseListUsingFilters();
   await fetchProfessors();
 });
+const getCoursesCodes = async () => {
+  coursesCodes.value = await $fetch("/api/courses_codes");
+};
 
 const getCourseCode = (course_id) => {
-  const course = courses.value.find((item) => item.course_id == course_id);
+  const course = coursesCodes.value.find((item) => item.course_id == course_id);
   if (!course) return null;
   return course.department + "-" + course.code;
 };
