@@ -35,8 +35,8 @@ const dropCourse = async () => {
             <div class="flex">
                 <div class="flex-grow"/>
                 <div>
-                    <UButton @click="this.$emit('dropped');dropCourse()">Confirm</UButton>
-                    <UButton color="gray" @click="this.$emit('cancelled')" class="ml-2">Cancel</UButton>
+                    <UButton @click="$emit('dropped');dropCourse()">Confirm</UButton>
+                    <UButton color="gray" @click="$emit('cancelled')" class="ml-2">Cancel</UButton>
                 </div>
             </div>
         </template>
