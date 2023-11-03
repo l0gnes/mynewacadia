@@ -1,4 +1,8 @@
 <script setup>
+import moment from "moment";
+import VueCal from 'vue-cal';
+import 'vue-cal/dist/vuecal.css';
+
 
 definePageMeta(
     {
@@ -17,6 +21,8 @@ const dropCourseModalIsOpened = ref(false);
 const dropCourseSection = ref(null);
 
 const selectedTerm = ref(0);
+
+const events = ref([]);
 
 const termTabs = [
     {
@@ -84,10 +90,49 @@ const openDropCourseDialogue = (section_id) => {
 const droppedCourseCallback = async () => {
     dropCourseModalIsOpened.value = false;
     await loadCourseData();
+    await getCalendarData();
 }
 
 onMounted(async () => {
     await loadCourseData();
+    await getCalendarData();
+})
+
+const generateEventTimeString = (dow, t) => {
+    const p = moment(t, "hh:mm:ss").day(dow).format("YYYY-MM-DD HH:mm")
+    return p;
+}
+
+const getCalendarData = async () => {
+
+    const {data} = await useFetch('/api/calendar/events');
+
+    let tmpEventData = [];
+
+
+    const term_based = data.value.filter((e) => (e.event_type == 1 || e.section.term == selectedTerm.value)); 
+
+    term_based.forEach(
+        (event) => {
+            event.days.forEach(
+                (d) => {
+                    tmpEventData.push(
+                        {
+                            "title" : event.event_type ? event.custom_metadata.name : event.section.course.title,
+                            "start" : generateEventTimeString(d, event.start_time),
+                            "end" : generateEventTimeString(d, event.end_time)
+                        }
+                    );
+                }
+            )
+        }
+    )
+
+    events.value = tmpEventData;
+}
+
+watch(selectedTerm, () => {
+    getCalendarData();
 })
 
 </script>
@@ -191,7 +236,19 @@ onMounted(async () => {
 
                     </template>
 
-                    <Calendar />
+                    <VueCal
+                        hide-view-selector
+                        hide-title-bar
+                        active-view="week"
+                        :timeStep="30"
+                        :disable-views="['years', 'year', 'day', 'month']"
+                        :timeFrom="8 * 60"
+                        :timeTo="23 * 60"
+                        small
+                        :events="events"
+                        @ready="getCalendarData"
+                        @view-change="getCalendarData"
+                    />
 
                 </UCard>
             </div>
