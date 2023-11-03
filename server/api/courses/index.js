@@ -1,67 +1,42 @@
-import {serverSupabaseClient} from '#supabase/server';
+import { serverSupabaseClient } from "#supabase/server";
 
-function checkForSubjects(supaQuery, params)
-{
+export default defineEventHandler(async (event) => {
+  const supa = await serverSupabaseClient(event);
+  const params = getQuery(event);
 
-    if(!params)
-    {
-        return params;
+  if (event.method === "GET") {
+    let query = supa.from("courses").select("*, sections ( * )");
+
+    const filters = JSON.parse(params.filters ?? "");
+    if (filters?.terms?.length === 1) {
+      query = query.eq("sections.term", filters.terms[0]);
     }
 
-    let temp = supaQuery;
-
-    if (Array.isArray(params))
-    {
-        temp.in('department', params);
-    }
-    else{
-        temp = temp.or(`department.eq.${params}`);
+    // Department filtering
+    if (filters?.departments.length) {
+      query = query.in("department", filters.departments);
     }
 
-    return temp
-}
-
-function checkForSearch(supaQuery, params)
-{
-    if(!params)
-    {
-        return supaQuery;
+    if (filters?.dows?.length > 0) {
+      query = query.containedBy("sections.days", filters.dows);
     }
 
-    let temp = supaQuery;
-
-    temp.ilike("title", `%${params}%`);
-
-    return temp;
-
-}
-
-export default defineEventHandler(
-    async (event) => {
-        const supa = await serverSupabaseClient(event);
-        const params = getQuery(event);
-
-
-
-        if(event.method === "GET")
-        {
-            
-            let query = supa.from('courses')
-                .select("*, sections ( * )");
-
-            // Department filtering
-            if (params.dept)
-                { query = checkForSubjects(query, params.dept); }
-
-            // Search filtering
-            if (params.search)
-                { query = checkForSearch(query, params.search); }
-
-            const {data, error} = await query;
-
-            return data;
-
-        }
-
+    // Search filtering
+    if (params.search) {
+      query = query.ilike("title", `%${params}%`);
     }
-)
+
+    if (filters.startTime) {
+      query = query.gte("sections.start_time", `${filters.startTime}:00`);
+    }
+    if (filters.endTime) {
+      query = query.lte("sections.end_time", `${filters.endTime}:00`);
+    }
+    if (filters.professors) {
+      query = query.in("sections.prof_id", filters.professors);
+    }
+
+    const { data, error } = await query;
+    return data;
+  }
+});

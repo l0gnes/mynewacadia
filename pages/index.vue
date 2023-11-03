@@ -62,12 +62,20 @@ const courseViewCols = [
 ];
 
 // Actual data stores for the filter
-const filterDepartment = ref([]); // department list
 const searchBarContent = ref(""); // search bar reactive var
 
 const subjects = ref([]); // all the different subjects we have in the database
 const courses = ref([]); // all of the different courses we are serving
 const professors = ref([]);
+const filters = reactive({
+  departments: [],
+  terms: [],
+  dows: [],
+  startTime: null,
+  endTime: null,
+  professors: [],
+});
+
 // Data for the CourseView
 const expandedViewCourseData = ref({}); // JSON data served from the API
 const expandCourseView = ref(false); // Reactive variable to actually show the CourseView modal
@@ -118,31 +126,25 @@ const generateTimeString = (dow, start_time, end_time) => {
 const getSectionDataForTable = () => {
   let formattedData = [];
 
-    expandedViewCourseData.value.sections.forEach(
-        (s) => {
-            formattedData.push(
-                {
-                    "section_id" : s.section_id,
-                    "section": ((s.term == 0) ? "FA" : "WI") + s.number.toString().padStart(2, '0'),
-                    "prof_name": s.professors.name,
-                    "vacancy": generateVacancyString(s.seat_count, s.student_count),
-                    "times": generateTimeString(s.days, s.start_time, s.end_time),
-                    "is_waitlisted" : (s.seat_count < s.student_count)  // Used in detemining Button text in the CourseView (E.g., Enroll/Waitlist)
-                }
-            )
-        }
-    );
+  expandedViewCourseData.value.sections.forEach((s) => {
+    formattedData.push({
+      section_id: s.section_id,
+      section:
+        (s.term == 0 ? "FA" : "WI") + s.number.toString().padStart(2, "0"),
+      prof_name: s.professors.name,
+      vacancy: generateVacancyString(s.seat_count, s.student_count),
+      times: generateTimeString(s.days, s.start_time, s.end_time),
+      is_waitlisted: s.seat_count < s.student_count, // Used in detemining Button text in the CourseView (E.g., Enroll/Waitlist)
+    });
+  });
 
   return formattedData;
 };
 
 // Active filtering code
-watch(
-  [filterDepartment, searchBarContent],
-  async ([n_sel, n_ser], [o_sel, o_ser]) => {
-    await fetchCourseListUsingFilters();
-  }
-);
+watch([filters, searchBarContent], async ([n_sel, n_ser], [o_sel, o_ser]) => {
+  await fetchCourseListUsingFilters();
+});
 
 // Code for the logout button
 const logout = async () => {
@@ -155,14 +157,14 @@ const logout = async () => {
 
 // Calling this resupplies the displayed courses in respect to our filters
 const fetchCourseListUsingFilters = async () => {
-  let query = {};
+  let query = {filters};
+  // if (!(terms.fall && terms.winter)) {
+  //   if (terms.fall) query["term"] = 0;
+  //   if (terms.winter) query["term"] = 1;
+  // }
 
   if (searchBarContent.value.length > 0) {
     query["search"] = searchBarContent.value;
-  }
-
-  if (filterDepartment.value.length > 0) {
-    query["dept"] = filterDepartment.value;
   }
 
   await $fetch("/api/courses", { query: query }).then((r) => {
@@ -182,85 +184,71 @@ onMounted(async () => {
     subjects.value = r;
   });
 
-    await $fetch("/api/subjects").then(
-        (r) => {subjects.value = r}
-    );
-    
-    await fetchEnrolledCourses();
-    await fetchCourseListUsingFilters();
-    await fetchProfessors();
+  await $fetch("/api/subjects").then((r) => {
+    subjects.value = r;
+  });
 
-})
+  await fetchEnrolledCourses();
+  await fetchCourseListUsingFilters();
+  await fetchProfessors();
+});
 
 // Calling this opens the CourseView modal, and displays `course_id` Course's information.
 const showCourseInformation = async (course_id) => {
-    
-    // Query the data first.
-    await $fetch(`/api/courses/${course_id}`).then(
-        (r) => {
-            expandedViewCourseData.value = r;
-            expandCourseView.value = true; // Show the CourseView afterwards.
-        }
-    );
-}
+  // Query the data first.
+  await $fetch(`/api/courses/${course_id}`).then((r) => {
+    expandedViewCourseData.value = r;
+    expandCourseView.value = true; // Show the CourseView afterwards.
+  });
+};
 
 // Calling this with a section_id enrolls a user in a course
 // It also closes the course view if it is open
 // TODO: Make some sort of indicator that the user actually did enroll in the course (e.g., a toast or a message etc.)
 const enrollInCourse = async (section_id) => {
+  await useFetch("/api/calendar/events/courses", {
+    method: "PUT",
+    body: {
+      section_id: section_id,
+    },
+    lazy: false,
+  }).then(async (o) => {
+    expandCourseView.value = false; // Close the course view if it's open
+    await fetchEnrolledCourses(); // Refetch enrolled courses
+  });
+};
 
-    await useFetch(
-        "/api/calendar/events/courses",
-        {
-            method: "PUT",
-            body: {
-                "section_id": section_id
-            },
-            lazy: false
-        }
-    ).then(
-        async (o) => {
-            expandCourseView.value = false;         // Close the course view if it's open
-            await fetchEnrolledCourses()            // Refetch enrolled courses
-        }
-    );
-}
-
-// This function fetches all of the sections that a user is enrolled into and 
+// This function fetches all of the sections that a user is enrolled into and
 // loads it into a variable that is used to detect whether or not a user
 // is enrolling or dropping a class
 const fetchEnrolledCourses = async () => {
-    
-    // If user isn't authenticated, then don't return any enrolled courses
-    if(!is_authenticated)
-    {
-        return;
-    }
+  // If user isn't authenticated, then don't return any enrolled courses
+  if (!is_authenticated) {
+    return;
+  }
 
-    const {data} = await useFetch("/api/user/section_list", { lazy: false });
+  const { data } = await useFetch("/api/user/section_list", { lazy: false });
 
-    enrolledCourses.value = data;
-}
+  enrolledCourses.value = data;
+};
 
 const dropSection = async (section_id) => {
-    if(!is_authenticated)
-    {
-        return;
-    }
+  if (!is_authenticated) {
+    return;
+  }
 
-    await useFetch(`/api/calendar/events/courses/${section_id}`, {method: 'DELETE', lazy: false})
-        .then(
-            async (resp) => {
-                expandCourseView.value = false;                
-                await fetchEnrolledCourses();
-            }
-        )
-}
-
+  await useFetch(`/api/calendar/events/courses/${section_id}`, {
+    method: "DELETE",
+    lazy: false,
+  }).then(async (resp) => {
+    expandCourseView.value = false;
+    await fetchEnrolledCourses();
+  });
+};
 </script>
 
 <template>
-  <UCard class="m-4 bg-black">
+  <UCard class="m-2 my-4 bg-black">
     <template #header>
       <div class="py-4">
         <h1 class="text-4xl font-semibold">My New Acadia</h1>
@@ -303,51 +291,104 @@ const dropSection = async (section_id) => {
             {{ courses.length }} results found
           </h3>
         </template>
-
         <UAccordion :items="accordianItems">
           <template #departments>
-            <UCheckbox
-              :key="s.code"
-              :value="s.code"
-              :name="s.name"
-              v-bind="s"
-              v-model="filterDepartment"
-              :ref="s.code"
-              v-for="s in subjects"
-            >
-              <template #label>
-                <span>{{ s.name }}</span>
-                <UBadge size="sm" variant="outline">{{ s.count }}</UBadge>
-              </template>
-            </UCheckbox>
+            <div class="ml-2">
+              <UCheckbox
+                class="my-1"
+                :key="s.code"
+                :value="s.code"
+                :name="s.name"
+                v-bind="s"
+                v-model="filters.departments"
+                :ref="s.code"
+                v-for="s in subjects"
+              >
+                <template #label>
+                  <span class="mr-1">{{ s.name }}</span>
+                  <UBadge size="xs" color="secondary" variant="outline">{{
+                    s.count
+                  }}</UBadge>
+                </template>
+              </UCheckbox>
+            </div>
           </template>
 
           <template #terms>
-            <UCheckbox label="Fall"></UCheckbox>
-            <UCheckbox label="Winter"></UCheckbox>
+            <div class="ml-2">
+              <UCheckbox
+                class="my-1"
+                v-model="filters.terms"
+                :value="0"
+                label="Fall"
+              ></UCheckbox>
+              <UCheckbox
+                class="my-1"
+                v-model="filters.terms"
+                :value="1"
+                label="Winter"
+              ></UCheckbox>
+            </div>
           </template>
 
           <template #dow>
-            <UCheckbox label="Monday"></UCheckbox>
-            <UCheckbox label="Tuesday"></UCheckbox>
-            <UCheckbox label="Wednsday"></UCheckbox>
-            <UCheckbox label="Thursday"></UCheckbox>
-            <UCheckbox label="Friday"></UCheckbox>
+            <div class="ml-2">
+              <UCheckbox
+                class="my-1"
+                v-model="filters.dows"
+                :value="0"
+                label="Monday"
+              ></UCheckbox>
+              <UCheckbox
+                class="my-1"
+                v-model="filters.dows"
+                :value="1"
+                label="Tuesday"
+              ></UCheckbox>
+              <UCheckbox
+                v-model="filters.dows"
+                :value="2"
+                label="Wednsday"
+              ></UCheckbox>
+              <UCheckbox
+                class="my-1"
+                v-model="filters.dows"
+                :value="3"
+                label="Thursday"
+              ></UCheckbox>
+              <UCheckbox
+                class="my-1"
+                v-model="filters.dows"
+                :value="4"
+                label="Friday"
+              ></UCheckbox>
+            </div>
           </template>
           <template #tod>
-            <label for="start_time">Start</label>
-            <UInput id="start_time" type="time" />
-            <label for="end_time">End</label>
-            <UInput id="end_time" type="time" />
+            <div class="ml-2">
+              <label for="start_time">Start</label>
+              <UInput
+                class="mb-2"
+                v-model="filters.startTime"
+                id="start_time"
+                type="time"
+              />
+              <label for="end_time">End</label>
+              <UInput v-model="filters.endTime" id="end_time" type="time" />
+            </div>
           </template>
 
           <template #instructor>
-            <USelectMenu
-              :options="professors"
-              option-attribute="name"
-              value-attribute="prof_id"
-            >
-            </USelectMenu>
+            <div class="ml-2">
+              <UCheckbox
+                class="my-1"
+                :label="prof.name"
+                :key="prof.prof_id"
+                :value="prof.prof_id"
+                v-model="filters.professors"
+                v-for="prof in professors"
+              ></UCheckbox>
+            </div>
           </template>
         </UAccordion>
       </UCard>

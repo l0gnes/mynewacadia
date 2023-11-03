@@ -12,7 +12,6 @@ export default defineEventHandler(
         if (error) {
           throw new Error(error)
         }
-        console.log(data);
         return data
     } 
 )
