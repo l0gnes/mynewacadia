@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
     // Search filtering
     if (params.search) {
-      query = query.ilike("title", `%${params}%`);
+      query = query.ilike("title", `%${params.search}%`);
     }
 
     if (filters.startTime) {
