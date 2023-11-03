@@ -255,6 +255,16 @@ const dropSection = async (section_id) => {
     await fetchEnrolledCourses();
   });
 };
+
+const resetFilters = async () => {
+  filters.departments = [];
+  filters.terms = [];
+  filters.dows = [];
+  filters.startTime = null;
+  filters.endTime = null;
+  filters.professors = [];
+  await fetchCourseListUsingFilters(); // Refetch the course list without filters
+};
 </script>
 
 <template>
@@ -301,6 +311,7 @@ const dropSection = async (section_id) => {
             {{ courses.length }} results found
           </h3>
         </template>
+        <UButton icon="i-heroicons-arrow-path-20-solid" label="Reset Filters" class="w-full mb-1.5 justify-left" @click="resetFilters" />  
         <UAccordion :items="accordianItems">
           <template #departments>
             <div class="ml-2">
@@ -508,20 +519,27 @@ const dropSection = async (section_id) => {
 
       <UTable :columns="courseViewCols" :rows="getSectionDataForTable()">
         <template #enroll-data="{ row }">
-          <UTooltip
-            text="You must be logged in to do this"
-            :prevent="is_authenticated"
-          >
-            <UButton
-              :color="!is_authenticated ? 'gray' : 'primary'"
-              :disabled="!is_authenticated"
-              :variant="row.is_waitlisted ? 'outline' : 'solid'"
-              class="w-full justify-center"
-              @click="enrollInCourse(row.section_id)"
+          <div v-if="!enrolledCourses.value.includes(row.section_id)">
+            <UTooltip text="You must be logged in to do this" :prevent="is_authenticated">
+                <UButton
+                    :color="!is_authenticated ? 'gray' : 'primary'"
+                    :disabled="!is_authenticated"
+                    :variant="row.is_waitlisted ? 'outline' : 'solid'"  
+                    class="w-full justify-center" 
+                    @click="enrollInCourse(row.section_id)"
+                >
+                    {{ row.is_waitlisted ? "Waitlist" : "Enroll" }}
+                </UButton>
+            </UTooltip>
+        </div>
+        <div v-else>
+            <UButton 
+                color="gray"
+                @click="dropSection(row.section_id)"
             >
-              {{ row.is_waitlisted ? "Waitlist" : "Enroll" }}
+                {{ row.is_waitlisted ? "Unwaitlist" : "Drop" }}
             </UButton>
-          </UTooltip>
+        </div>
         </template>
       </UTable>
 
