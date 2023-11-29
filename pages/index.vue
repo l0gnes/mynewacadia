@@ -239,7 +239,7 @@ const fetchEnrolledCourses = async () => {
 
   const { data } = await useFetch("/api/user/section_list", { lazy: false });
 
-  enrolledCourses.value = data;
+  enrolledCourses.value = data ? data : [];
 };
 
 const dropSection = async (section_id) => {
@@ -519,7 +519,7 @@ const resetFilters = async () => {
 
       <UTable :columns="courseViewCols" :rows="getSectionDataForTable()">
         <template #enroll-data="{ row }">
-          <div v-if="!enrolledCourses.value.includes(row.section_id)">
+          <div v-if="!toValue(enrolledCourses).includes(row.section_id)">
             <UTooltip text="You must be logged in to do this" :prevent="is_authenticated">
                 <UButton
                     :color="!is_authenticated ? 'gray' : 'primary'"
